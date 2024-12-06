@@ -1,0 +1,104 @@
+from flask import Flask, request, render_template, jsonify
+from flask_sqlalchemy import SQLAlchemy
+import sqlite3
+import os
+from datetime import datetime, timedelta
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'uploads'
+
+db = SQLAlchemy(app)
+
+class Reservation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(15), nullable=False)
+    checkin = db.Column(db.String(10), nullable=False)
+    checkout = db.Column(db.String(10), nullable=False)
+    slip = db.Column(db.String(100), nullable=False)
+
+class RoomAvailability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(10), nullable=False, unique=True)
+    available_rooms = db.Column(db.Integer, nullable=False)
+
+@app.route('/')
+def status_room():
+    return render_template('status_room.html')
+
+@app.route('/reservation_form')
+def reservation_form():
+    return render_template('reservation_form.html')
+
+@app.route('/submit-reservation', methods=['POST'])
+def submit_reservation():
+    name = request.form['name']
+    phone = request.form['phone']
+    checkin = request.form['checkin']
+    checkout = request.form['checkout']
+    slip = request.files['slip']
+
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
+    slip.save(slip_filename)
+
+    new_reservation = Reservation(name=name, phone=phone, checkin=checkin, checkout=checkout, slip=slip_filename)
+    db.session.add(new_reservation)
+    db.session.commit()
+
+    # อัปเดตจำนวนห้องว่างในแต่ละวันหลังจากการจอง
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+    cur.execute("SELECT * FROM room_availability WHERE date BETWEEN ? AND ?", (checkin, checkout))
+    for row in cur.fetchall():
+        available_rooms = row[2] - 1
+        cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, row[1]))
+    con.commit()
+    con.close()
+
+    return jsonify({'message': 'Reservation successful!'})
+
+@app.route('/get-room-status')
+def get_room_status():
+    reservations = RoomAvailability.query.all()
+    events = []
+    for reservation in reservations:
+        if reservation.available_rooms > 0:
+            events.append({
+                'title': f'{reservation.available_rooms} rooms available',
+                'start': reservation.date,
+                'end': reservation.date,
+                'overlap': False,
+                'display': 'background',
+                'color': '#d4edda'
+            })
+    return jsonify(events)
+
+def initialize_room_availability():
+    start_date = datetime.now().date()
+    end_date = start_date + timedelta(days=30)  # สร้างข้อมูลสำหรับ 30 วันข้างหน้า
+
+    current_date = start_date
+    while current_date <= end_date:
+        day_of_week = current_date.weekday()
+        if day_of_week < 5:  # Monday (0) to Friday (4)
+            available_rooms = 0
+        else:  # Saturday (5) and Sunday (6)
+            available_rooms = 5
+
+        date_str = current_date.strftime('%Y-%m-%d')
+        room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
+        db.session.add(room_availability)
+        current_date += timedelta(days=1)
+
+    db.session.commit()
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # สร้างตารางในฐานข้อมูล
+        if RoomAvailability.query.count() == 0:
+            initialize_room_availability()  # เติมข้อมูลเริ่มต้น
+    app.run(debug=True)

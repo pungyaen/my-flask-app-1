@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Availability</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.5/main.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.5/main.min.js"></script>
+    <style>
+        /* เพิ่ม CSS สำหรับข้อความ "rooms available" */
+        .rooms-available {
+            font-size: 20px; /* ขนาดตัวอักษรใหญ่ขึ้น */
+            font-weight: bold; /* เน้นข้อความ */
+            color: #ff0000; /* สีแดงเพื่อความเด่น */
+        }
+    </style>
+</head>
+<body>
+    <h1>Room Availability</h1>
+    <div id="calendar"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                events: '/get-room-status', // Fetch the events from the server
+                eventContent: function(info) {
+                    // กำหนดสไตล์ของข้อความ "rooms available"
+                    return {
+                        html: `<span class="rooms-available">${info.event.title}</span>`
+                    };
+                },
+                eventClick: function(info) {
+                    if (info.event.title !== '0 rooms available') {
+                        // Redirect to the reservation form with the selected date
+                        window.location.href = `/reservation_form?date=${info.event.startStr}`;
+                    }
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+</body>
+</html>
+

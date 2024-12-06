@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Form</title>
+</head>
+<body>
+    <h1>Reservation Form</h1>
+    <form id="reservationForm" action="/submit-reservation" method="post" enctype="multipart/form-data">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br><br>
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" name="phone" required><br><br>
+        <label for="checkin">Check-in Date:</label>
+        <input type="date" id="checkin" name="checkin" required><br><br>
+        <label for="checkout">Check-out Date:</label>
+        <input type="date" id="checkout" name="checkout" required><br><br>
+        <label for="slip">Payment Slip:</label>
+        <input type="file" id="slip" name="slip" required><br><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const date = urlParams.get('date');
+            if (date) {
+                document.getElementById('checkin').value = date;
+            }
+
+            // Add event listener to form submission
+            document.getElementById('reservationForm').addEventListener('submit', function(event) {
+                const checkin = document.getElementById('checkin').value;
+                const checkout = document.getElementById('checkout').value;
+                const today = new Date().toISOString().split('T')[0];
+
+                if (new Date(checkin) < new Date(today)) {
+                    event.preventDefault();
+                    alert('Check-in date must not be before today.');
+                } else if (new Date(checkout) <= new Date(checkin)) {
+                    event.preventDefault();
+                    alert('Check-out date must be after the check-in date.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
