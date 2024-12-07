@@ -154,5 +154,13 @@ def update_room_availability():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # สร้างตารางในฐานข้อมูล
+        if RoomAvailability.query.count() == 0:
+            initialize_room_availability()  # เติมข้อมูลเริ่มต้น
+
+        # เริ่มกระบวนการอัปเดตจำนวนห้องว่างใน background
+        update_thread = threading.Thread(target=update_room_availability)
+        update_thread.start()
 
     app.run(debug=True)
