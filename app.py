@@ -7,6 +7,11 @@ import threading
 import time
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'uploads'
+
+db = SQLAlchemy(app)
 
 
 @app.route('/')
