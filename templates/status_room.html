@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-    <h1>Room Availability</h1>
+    <h1>ตรวจสอบห้องว่างและการจอง (*โปรดเลือกจองและโอนชำระเงินให้ตรงกับวันที่มีห้องว่างเท่านั้น*)</h1>
     <div id="calendar"></div>
 
     <script>
@@ -26,7 +26,7 @@
                 initialView: 'dayGridMonth',
                 events: '/get-room-status', // Fetch the events from the server
                 eventContent: function(info) {
-                    // กำหนดสไตล์ของข้อความ "rooms available"
+                    // กำหนดสไตล์ของข้อความ "rooms available (จำนวนห้องว่าง)"
                     return {
                         html: `<span class="rooms-available">${info.event.title}</span>`
                     };
