@@ -13,6 +13,20 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
 
+class Reservation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(15), nullable=False)
+    checkin = db.Column(db.String(10), nullable=False)
+    checkout = db.Column(db.String(10), nullable=False)
+    slip = db.Column(db.String(100), nullable=False)
+
+
+class RoomAvailability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(10), nullable=False, unique=True)
+    available_rooms = db.Column(db.Integer, nullable=False)
+
 
 @app.route('/')
 def hotel_informaion():
