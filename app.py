@@ -40,6 +40,46 @@ def status_room():
 def reservation_form():
     return render_template('reservation_form.html')
 
+@app.route('/submit-reservation', methods=['POST'])
+def submit_reservation():
+    name = request.form['name']
+    phone = request.form['phone']
+    checkin = request.form['checkin']
+    checkout = request.form['checkout']
+    slip = request.files['slip']
+
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
+    slip.save(slip_filename)
+
+    new_reservation = Reservation(name=name, phone=phone, checkin=checkin, checkout=checkout, slip=slip_filename)
+    db.session.add(new_reservation)
+    db.session.commit()
+
+    # อัปเดตจำนวนห้องว่างในแต่ละวันหลังจากการจอง
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+
+    checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
+    checkout_date = datetime.strptime(checkout, '%Y-%m-%d')
+    date_to_update = checkin_date
+
+    while date_to_update < checkout_date:
+        date_str = date_to_update.strftime('%Y-%m-%d')
+        cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
+        available_rooms = cur.fetchone()[0]
+        available_rooms -= 1
+        cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
+        date_to_update += timedelta(days=1)
+
+    con.commit()
+    con.close()
+
+    return jsonify({'message': 'Reservation successful!'})
+
+
+
 if __name__ == '__main__':
 
     app.run(debug=True)
