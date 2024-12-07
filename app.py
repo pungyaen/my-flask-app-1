@@ -109,6 +109,22 @@ def submit_reservation():
 
     return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
 
+@app.route('/get-room-status')
+def get_room_status():
+    reservations = RoomAvailability.query.all()
+    events = []
+    for reservation in reservations:
+        if reservation.available_rooms > 0:
+            events.append({
+                'title': f'{reservation.available_rooms} rooms available',
+                'start': reservation.date,
+                'end': reservation.date,
+                'overlap': False,
+                'display': 'background',
+                'color': '#d4edda'
+            })
+    return jsonify(events)
+
 def get_reservation_data():
     con = sqlite3.connect('instance/reservations.db')
     cur = con.cursor()
