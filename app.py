@@ -94,6 +94,63 @@ def get_room_status():
             })
     return jsonify(events)
 
+def initialize_room_availability():
+    start_date = datetime.now().date()
+    end_date = start_date + timedelta(days=30)  # สร้างข้อมูลสำหรับ 30 วันข้างหน้า
+
+    current_date = start_date
+    while current_date <= end_date:
+        day_of_week = current_date.weekday()
+        if day_of_week < 5:  # Monday (0) to Friday (4)
+            available_rooms = 5  # เปลี่ยนค่าเริ่มต้นเป็น 5
+        else:  # Saturday (5) and Sunday (6)
+            available_rooms = 5
+
+        date_str = current_date.strftime('%Y-%m-%d')
+        room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
+        db.session.add(room_availability)
+        current_date += timedelta(days=1)
+
+    db.session.commit()
+
+
+def update_room_availability():
+    while True:
+        try:
+            con = sqlite3.connect('instance/reservations.db')
+            cur = con.cursor()
+
+            # รีเซ็ตจำนวนห้องว่างตามค่าเริ่มต้น (***ใส่จำนวนห้องว่างทั้งหมด***)
+            cur.execute("UPDATE room_availability SET available_rooms = 3")
+
+            # ดึงข้อมูลการจองทั้งหมด
+            cur.execute("SELECT checkin, checkout FROM reservation")
+            reservations = cur.fetchall()
+
+            for reservation in reservations:
+                checkin_date = datetime.strptime(reservation[0], '%Y-%m-%d')
+                checkout_date = datetime.strptime(reservation[1], '%Y-%m-%d')
+                date_to_update = checkin_date
+
+                while date_to_update < checkout_date:
+                    date_str = date_to_update.strftime('%Y-%m-%d')
+                    cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
+                    available_rooms = cur.fetchone()[0]
+                    available_rooms -= 1
+                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?",
+                                (available_rooms, date_str))
+                    date_to_update += timedelta(days=1)
+
+            con.commit()
+            con.close()
+        except sqlite3.OperationalError as e:
+            print(f"SQLite error: {e}. Retrying in 1 second...")
+            time.sleep(1)
+            continue
+
+        # อัปเดตทุก 30 วินาที
+        time.sleep(30)
+
 
 
 if __name__ == '__main__':
