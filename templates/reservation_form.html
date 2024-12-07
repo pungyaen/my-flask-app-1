@@ -8,13 +8,13 @@
 <body>
     <h1>โปรดกรอกข้อมูลการจอง</h1>
     <form id="reservationForm" action="/submit-reservation" method="post" enctype="multipart/form-data">
-        <label for="name">Name:</label>
+        <label for="name">ชื่อผู้จอง:</label>
         <input type="text" id="name" name="name" required><br><br>
-        <label for="phone">Phone:</label>
+        <label for="phone">หมายเลขโทรศัพท์:</label>
         <input type="text" id="phone" name="phone" required><br><br>
-        <label for="checkin">Check-in Date:</label>
+        <label for="checkin">วันที่ Check-in:</label>
         <input type="date" id="checkin" name="checkin" required><br><br>
-        <label for="checkout">Check-out Date:</label>
+        <label for="checkout">วันที่ Check-out:</label>
         <input type="date" id="checkout" name="checkout" required><br><br>
         <h2 style="font-size: 16px;">
             <p>หมายเลขบัญชีรับโอนเงิน :</p>
@@ -24,7 +24,7 @@
             <p>*โปรดตรวจสอบชื่อบัญชีและหมายเลขให้ตรงกันก่อนทำการโอนเงิน*</p>
         </h2>
 
-        <label for="slip">Payment Slip:</label>
+        <label for="slip">แนบสลิปโอนเงินเต็มจำนวน (Payment Slip):</label>
         <input type="file" id="slip" name="slip" required><br><br>
         <input type="submit" value="Submit">
     </form>

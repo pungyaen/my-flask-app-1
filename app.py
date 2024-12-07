@@ -89,7 +89,7 @@ def submit_reservation():
     con.commit()
     con.close()
 
-    return jsonify({'message': 'Reservation successful!'})
+    return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินครบถ้วนแล้วเท่านั้น*)'})
 
 
 @app.route('/get-room-status')
