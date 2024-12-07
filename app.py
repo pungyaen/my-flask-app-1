@@ -5,6 +5,8 @@ import os
 from datetime import datetime, timedelta
 import threading
 import time
+from PIL import Image, ImageDraw, ImageFont
+import requests
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -93,34 +95,101 @@ def submit_reservation():
     con.commit()
     con.close()
 
+    # ดึงข้อมูลการจองทั้งหมด
+    reservations = get_reservation_data()
+    # ดึงข้อมูลห้องว่างทั้งหมด
+    room_availabilities = get_room_availability()
+    # สร้างภาพ
+    img = create_reservation_image(reservations, room_availabilities, new_reservation.id)
+    save_image(img)
+
+    # ส่งภาพผ่าน LINE
+    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    send_line_image('reservation_details.jpg', line_token)
+
     return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
 
-@app.route('/get-room-status')
-def get_room_status():
-    reservations = RoomAvailability.query.all()
-    events = []
+def get_reservation_data():
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+    cur.execute("SELECT * FROM reservation")
+    reservations = cur.fetchall()
+    con.close()
+    return reservations
+
+def get_room_availability():
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+    cur.execute("SELECT * FROM room_availability")
+    room_availabilities = cur.fetchall()
+    con.close()
+    return room_availabilities
+
+def create_reservation_image(reservations, room_availabilities, latest_reservation_id):
+    img = Image.new('RGB', (800, 1000), color='white')
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font = ImageFont.truetype("arial.ttf", 15)
+        bold_font = ImageFont.truetype("arialbd.ttf", 15)
+    except IOError:
+        font = ImageFont.load_default()
+        bold_font = ImageFont.load_default()
+
+    y_offset = 10
+    draw.text((10, y_offset), "Reservations:", font=font, fill='black')
+    y_offset += 30
+
     for reservation in reservations:
-        if reservation.available_rooms > 0:
-            events.append({
-                'title': f'{reservation.available_rooms} rooms available',
-                'start': reservation.date,
-                'end': reservation.date,
-                'overlap': False,
-                'display': 'background',
-                'color': '#d4edda'
-            })
-    return jsonify(events)
+        idd = reservation[0]
+        name = reservation[1]
+        phone = reservation[2]
+        checkin = reservation[3]
+        checkout = reservation[4]
+        slip = reservation[5]
+        line = f"ID: {idd}, Name: {name}, Phone: {phone}, Check-in: {checkin}, Check-out: {checkout}, Slip: {slip}"
+        if idd == latest_reservation_id:
+            draw.text((10, y_offset), line, font=bold_font, fill='red')
+        else:
+            draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
+
+    y_offset += 20
+    draw.text((10, y_offset), "Room Availability:", font=font, fill='black')
+    y_offset += 30
+
+    for room in room_availabilities:
+        date = room[1]
+        available_rooms = room[2]
+        line = f"Date: {date}, Available Rooms: {available_rooms}"
+        draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
+
+    return img
+
+def save_image(img):
+    img.save('reservation_details.jpg')
+
+def send_line_image(image_path, token):
+    url = 'https://notify-api.line.me/api/notify'
+    headers = {
+        'Authorization': f'Bearer {token}',
+    }
+    message = {'message': 'รายละเอียดการจองและจำนวนห้องว่าง'}
+    files = {'imageFile': open(image_path, 'rb')}
+    response = requests.post(url, headers=headers, data=message, files=files)
+    return response
 
 def initialize_room_availability():
     start_date = datetime.now().date()
-    end_date = start_date + timedelta(days=30)  # สร้างข้อมูลสำหรับ 30 วันข้างหน้า
+    end_date = start_date + timedelta(days=30)
 
     current_date = start_date
     while current_date <= end_date:
         day_of_week = current_date.weekday()
-        if day_of_week < 5:  # Monday (0) to Friday (4)
-            available_rooms = 5  # เปลี่ยนค่าเริ่มต้นเป็น 5
-        else:  # Saturday (5) and Sunday (6)
+        if day_of_week < 5:
+            available_rooms = 5
+        else:
             available_rooms = 5
 
         date_str = current_date.strftime('%Y-%m-%d')
@@ -130,17 +199,12 @@ def initialize_room_availability():
 
     db.session.commit()
 
-
 def update_room_availability():
     while True:
         try:
             con = sqlite3.connect('instance/reservations.db')
             cur = con.cursor()
-
-            # รีเซ็ตจำนวนห้องว่างตามค่าเริ่มต้น (***ใส่จำนวนห้องว่างทั้งหมด***)
             cur.execute("UPDATE room_availability SET available_rooms = 3")
-
-            # ดึงข้อมูลการจองทั้งหมด
             cur.execute("SELECT checkin, checkout FROM reservation")
             reservations = cur.fetchall()
 
@@ -154,8 +218,7 @@ def update_room_availability():
                     cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
                     available_rooms = cur.fetchone()[0]
                     available_rooms -= 1
-                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?",
-                                (available_rooms, date_str))
+                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
                     date_to_update += timedelta(days=1)
 
             con.commit()
@@ -165,18 +228,14 @@ def update_room_availability():
             time.sleep(1)
             continue
 
-        # อัปเดตทุก 30 วินาที
         time.sleep(30)
-
-
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # สร้างตารางในฐานข้อมูล
+        db.create_all()
         if RoomAvailability.query.count() == 0:
-            initialize_room_availability()  # เติมข้อมูลเริ่มต้น
+            initialize_room_availability()
 
-        # เริ่มกระบวนการอัปเดตจำนวนห้องว่างใน background
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()
 
