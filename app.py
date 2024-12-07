@@ -62,6 +62,10 @@ def submit_reservation():
     # บันทึกไฟล์ที่อัพโหลดด้วยชื่อใหม่
     slip.save(slip_filename)
 
+    # ส่งภาพผ่าน LINE
+    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    send_line_image_2(slip_filename, line_token)
+
     # ตรวจสอบความพร้อมของห้อง
     checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
     checkout_date = datetime.strptime(checkout, '%Y-%m-%d')
@@ -201,6 +205,23 @@ def send_line_image(image_path, token):
     message = {'message': 'รายละเอียดการจองและจำนวนห้องว่าง'}
     files = {'imageFile': open(image_path, 'rb')}
     response = requests.post(url, headers=headers, data=message, files=files)
+    return response
+
+def send_line_image_2(image_path, token):
+    url = 'https://notify-api.line.me/api/notify'
+    headers = {
+        'Authorization': f'Bearer {token}',
+    }
+
+    message = {'message': 'มีการอัปโหลดสลิปโอนเงินใหม่'}
+    files = {'imageFile': open(image_path, 'rb')}
+
+    # ส่ง POST request ไปยัง LINE Notify
+    response = requests.post(url, headers=headers, data=message, files=files)
+
+    # ปิดไฟล์หลังจากส่ง
+    files['imageFile'].close()
+
     return response
 
 def initialize_room_availability():
