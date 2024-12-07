@@ -1,11 +1,11 @@
 from flask import Flask, request, render_template, jsonify
 from flask_sqlalchemy import SQLAlchemy
+import sqlite3
 import os
 from datetime import datetime, timedelta
 import threading
 import time
-import matplotlib.pyplot as plt
-import calendar
+from PIL import Image, ImageDraw, ImageFont
 import requests
 
 app = Flask(__name__)
@@ -23,10 +23,12 @@ class Reservation(db.Model):
     checkout = db.Column(db.String(10), nullable=False)
     slip = db.Column(db.String(100), nullable=False)
 
+
 class RoomAvailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
+
 
 @app.route('/')
 def hotel_informaion():
@@ -53,6 +55,7 @@ def submit_reservation():
     slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
     slip.save(slip_filename)
 
+    # ตรวจสอบความพร้อมของห้อง
     checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
     checkout_date = datetime.strptime(checkout, '%Y-%m-%d')
     date_to_check = checkin_date
@@ -73,10 +76,12 @@ def submit_reservation():
             return jsonify({'message': f'No rooms available on {date_str}. Please select another date.'}), 400
         date_to_check += timedelta(days=1)
 
+    # ถ้าวันที่ที่เลือกมีห้องว่างทั้งหมดก็ทำการบันทึกการจอง
     new_reservation = Reservation(name=name, phone=phone, checkin=checkin, checkout=checkout, slip=slip_filename)
     db.session.add(new_reservation)
     db.session.commit()
 
+    # อัปเดตจำนวนห้องว่างในแต่ละวันหลังจากการจอง
     date_to_update = checkin_date
 
     while date_to_update < checkout_date:
@@ -90,15 +95,35 @@ def submit_reservation():
     con.commit()
     con.close()
 
+    # ดึงข้อมูลการจองทั้งหมด
     reservations = get_reservation_data()
+    # ดึงข้อมูลห้องว่างทั้งหมด
     room_availabilities = get_room_availability()
-    img = create_calendar_image(2024, 12, room_availabilities)
+    # สร้างภาพ
+    img = create_reservation_image(reservations, room_availabilities, new_reservation.id)
     save_image(img)
 
+    # ส่งภาพผ่าน LINE
     line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
     send_line_image('reservation_details.jpg', line_token)
 
     return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
+
+@app.route('/get-room-status')
+def get_room_status():
+    reservations = RoomAvailability.query.all()
+    events = []
+    for reservation in reservations:
+        if reservation.available_rooms > 0:
+            events.append({
+                'title': f'{reservation.available_rooms} rooms available',
+                'start': reservation.date,
+                'end': reservation.date,
+                'overlap': False,
+                'display': 'background',
+                'color': '#d4edda'
+            })
+    return jsonify(events)
 
 def get_reservation_data():
     con = sqlite3.connect('instance/reservations.db')
@@ -116,34 +141,47 @@ def get_room_availability():
     con.close()
     return room_availabilities
 
-def create_calendar_image(year, month, room_availability):
-    plt.figure(figsize=(10, 8))
-    cal = calendar.Calendar(firstweekday=6)
-    month_days = cal.monthdayscalendar(year, month)
+def create_reservation_image(reservations, room_availabilities, latest_reservation_id):
+    img = Image.new('RGB', (800, 1000), color='white')
+    draw = ImageDraw.Draw(img)
 
-    plt.title(f"Room Availability for {calendar.month_name[month]} {year}", fontsize=20)
+    try:
+        font = ImageFont.truetype("arial.ttf", 15)
+        bold_font = ImageFont.truetype("arialbd.ttf", 15)
+    except IOError:
+        font = ImageFont.load_default()
+        bold_font = ImageFont.load_default()
 
-    table_data = [['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']]
+    y_offset = 10
+    draw.text((10, y_offset), "Reservations:", font=font, fill='black')
+    y_offset += 30
 
-    for week in month_days:
-        week_data = []
-        for day in week:
-            if day == 0:
-                week_data.append('')
-            else:
-                date_str = f"{year}-{month:02d}-{day:02d}"
-                available_rooms = next((room[2] for room in room_availability if room[1] == date_str), 'N/A')
-                week_data.append(f"{day}\nRooms: {available_rooms}")
-        table_data.append(week_data)
+    for reservation in reservations:
+        idd = reservation[0]
+        name = reservation[1]
+        phone = reservation[2]
+        checkin = reservation[3]
+        checkout = reservation[4]
+        slip = reservation[5]
+        line = f"ID: {idd}, Name: {name}, Phone: {phone}, Check-in: {checkin}, Check-out: {checkout}, Slip: {slip}"
+        if idd == latest_reservation_id:
+            draw.text((10, y_offset), line, font=bold_font, fill='red')
+        else:
+            draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
 
-    table = plt.table(cellText=table_data, cellLoc='center', loc='center', colWidths=[0.1] * 7)
-    table.auto_set_font_size(False)
-    table.set_fontsize(14)
-    table.scale(1.2, 1.2)
+    y_offset += 20
+    draw.text((10, y_offset), "Room Availability:", font=font, fill='black')
+    y_offset += 30
 
-    plt.axis('off')
-    plt.savefig('reservation_details.jpg', bbox_inches='tight')
-    plt.close()
+    for room in room_availabilities:
+        date = room[1]
+        available_rooms = room[2]
+        line = f"Date: {date}, Available Rooms: {available_rooms}"
+        draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
+
+    return img
 
 def save_image(img):
     img.save('reservation_details.jpg')
