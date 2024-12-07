@@ -1,1 +1,1 @@
-web: python hotelreservation.py
+web: python app.py
