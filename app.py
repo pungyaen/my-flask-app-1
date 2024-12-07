@@ -107,7 +107,7 @@ def submit_reservation():
     line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
     send_line_image('reservation_details.jpg', line_token)
 
-    return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
+    return jsonify({'message': 'reservation form was sent (*booking completed when full transaction completed only*)'})
 
 @app.route('/get-room-status')
 def get_room_status():
