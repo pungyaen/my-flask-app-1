@@ -64,7 +64,11 @@ def submit_reservation():
     while date_to_check < checkout_date:
         date_str = date_to_check.strftime('%Y-%m-%d')
         cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
-        available_rooms = cur.fetchone()[0]
+        row = cur.fetchone()
+        if row is None:
+            con.close()
+            return jsonify({'message': f'No room availability data for {date_str}. Please select another date.'}), 400
+        available_rooms = row[0]
         if available_rooms <= 0:
             con.close()
             return jsonify({'message': f'No rooms available on {date_str}. Please select another date.'}), 400
@@ -90,7 +94,6 @@ def submit_reservation():
     con.close()
 
     return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
-
 
 @app.route('/get-room-status')
 def get_room_status():
