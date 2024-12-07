@@ -26,9 +26,10 @@
                 initialView: 'dayGridMonth',
                 events: '/get-room-status', // Fetch the events from the server
                 eventContent: function(info) {
-                    // กำหนดสไตล์ของข้อความ "rooms available (จำนวนห้องว่าง)"
+                    // แยกจำนวนห้องว่างออกจากข้อความและเปลี่ยนเป็นภาษาไทย
+                    var roomsAvailable = info.event.title.match(/\d+/)[0];
                     return {
-                        html: `<span class="rooms-available">${info.event.title}</span>`
+                        html: `<span class="rooms-available">จำนวนห้องว่าง ${roomsAvailable} ห้อง</span>`
                     };
                 },
                 eventClick: function(info) {
