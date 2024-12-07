@@ -78,6 +78,22 @@ def submit_reservation():
 
     return jsonify({'message': 'Reservation successful!'})
 
+@app.route('/get-room-status')
+def get_room_status():
+    reservations = RoomAvailability.query.all()
+    events = []
+    for reservation in reservations:
+        if reservation.available_rooms > 0:
+            events.append({
+                'title': f'{reservation.available_rooms} rooms available',
+                'start': reservation.date,
+                'end': reservation.date,
+                'overlap': False,
+                'display': 'background',
+                'color': '#d4edda'
+            })
+    return jsonify(events)
+
 
 
 if __name__ == '__main__':
