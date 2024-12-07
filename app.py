@@ -7,12 +7,11 @@ import threading
 import time
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/reservations.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
-
 
 class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -22,27 +21,22 @@ class Reservation(db.Model):
     checkout = db.Column(db.String(10), nullable=False)
     slip = db.Column(db.String(100), nullable=False)
 
-
 class RoomAvailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
 
-
 @app.route('/')
 def hotel_informaion():
     return render_template('hotel_informaion.html')
-
 
 @app.route('/status_room')
 def status_room():
     return render_template('status_room.html')
 
-
 @app.route('/reservation_form')
 def reservation_form():
     return render_template('reservation_form.html')
-
 
 @app.route('/submit-reservation', methods=['POST'])
 def submit_reservation():
@@ -61,7 +55,6 @@ def submit_reservation():
     db.session.add(new_reservation)
     db.session.commit()
 
-    # อัปเดตจำนวนห้องว่างในแต่ละวันหลังจากการจอง
     con = sqlite3.connect('instance/reservations.db')
     cur = con.cursor()
 
@@ -82,7 +75,6 @@ def submit_reservation():
 
     return jsonify({'message': 'Reservation successful!'})
 
-
 @app.route('/get-room-status')
 def get_room_status():
     reservations = RoomAvailability.query.all()
@@ -99,17 +91,16 @@ def get_room_status():
             })
     return jsonify(events)
 
-
 def initialize_room_availability():
     start_date = datetime.now().date()
-    end_date = start_date + timedelta(days=30)  # สร้างข้อมูลสำหรับ 30 วันข้างหน้า
+    end_date = start_date + timedelta(days=30)
 
     current_date = start_date
     while current_date <= end_date:
         day_of_week = current_date.weekday()
-        if day_of_week < 5:  # Monday (0) to Friday (4)
-            available_rooms = 5  # เปลี่ยนค่าเริ่มต้นเป็น 5
-        else:  # Saturday (5) and Sunday (6)
+        if day_of_week < 5:
+            available_rooms = 5
+        else:
             available_rooms = 5
 
         date_str = current_date.strftime('%Y-%m-%d')
@@ -119,17 +110,14 @@ def initialize_room_availability():
 
     db.session.commit()
 
-
 def update_room_availability():
     while True:
         try:
             con = sqlite3.connect('instance/reservations.db')
             cur = con.cursor()
 
-            # รีเซ็ตจำนวนห้องว่างตามค่าเริ่มต้น (***ใส่จำนวนห้องว่างทั้งหมด***)
-            cur.execute("UPDATE room_availability SET available_rooms = 3")
+            cur.execute("UPDATE room_availability SET available_rooms = 5")
 
-            # ดึงข้อมูลการจองทั้งหมด
             cur.execute("SELECT checkin, checkout FROM reservation")
             reservations = cur.fetchall()
 
@@ -143,8 +131,7 @@ def update_room_availability():
                     cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
                     available_rooms = cur.fetchone()[0]
                     available_rooms -= 1
-                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?",
-                                (available_rooms, date_str))
+                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
                     date_to_update += timedelta(days=1)
 
             con.commit()
@@ -154,18 +141,15 @@ def update_room_availability():
             time.sleep(1)
             continue
 
-        # อัปเดตทุก 30 วินาที
         time.sleep(30)
-
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # สร้างตารางในฐานข้อมูล
+        db.create_all()
         if RoomAvailability.query.count() == 0:
-            initialize_room_availability()  # เติมข้อมูลเริ่มต้น
+            initialize_room_availability()
 
-        # เริ่มกระบวนการอัปเดตจำนวนห้องว่างใน background
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()
 
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
