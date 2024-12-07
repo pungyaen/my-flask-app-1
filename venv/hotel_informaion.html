@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Information</title>
+    <style>
+        .container {
+            text-align: center;
+            margin: 20px;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .image-container img {
+            max-width: 300px;
+            margin: 0 10px;
+        }
+        .map-container {
+            margin: 20px 0;
+        }
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #007BFF;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hotel Information</h1>
+        <div class="image-container">
+            <img src="{{ url_for('static', filename='hotel_pic.png') }}" alt="Hotel Picture">
+            <img src="{{ url_for('static', filename='room_pic.jpg') }}" alt="Room Picture">
+        </div>
+        <div class="map-container">
+            <iframe
+                src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d232.0423325210347!2d102.80605226516184!3d16.409741460289343!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x312289b18e928e27%3A0x4c3ec1e1f8baea25!2sBun%20House%20Apartment%20Khonkaen!5e1!3m2!1sth!2sth!4v1733472992151!5m2!1sth!2sth"
+                width="350"
+                height="260"
+                style="border:0;"
+                allowfullscreen=""
+                loading="lazy"
+            ></iframe>
+        </div>
+        <div class="price">Room Price: 450 บาท/คืน</div>
+        <a href="/status_room" class="btn">ตรวจสอบห้องว่างและจองห้องพัก</a>
+    </div>
+</body>
+</html>
