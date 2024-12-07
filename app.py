@@ -53,16 +53,29 @@ def submit_reservation():
     slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
     slip.save(slip_filename)
 
+    # ตรวจสอบความพร้อมของห้อง
+    checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
+    checkout_date = datetime.strptime(checkout, '%Y-%m-%d')
+    date_to_check = checkin_date
+
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+
+    while date_to_check < checkout_date:
+        date_str = date_to_check.strftime('%Y-%m-%d')
+        cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
+        available_rooms = cur.fetchone()[0]
+        if available_rooms <= 0:
+            con.close()
+            return jsonify({'message': f'No rooms available on {date_str}. Please select another date.'}), 400
+        date_to_check += timedelta(days=1)
+
+    # ถ้าวันที่ที่เลือกมีห้องว่างทั้งหมดก็ทำการบันทึกการจอง
     new_reservation = Reservation(name=name, phone=phone, checkin=checkin, checkout=checkout, slip=slip_filename)
     db.session.add(new_reservation)
     db.session.commit()
 
     # อัปเดตจำนวนห้องว่างในแต่ละวันหลังจากการจอง
-    con = sqlite3.connect('instance/reservations.db')
-    cur = con.cursor()
-
-    checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
-    checkout_date = datetime.strptime(checkout, '%Y-%m-%d')
     date_to_update = checkin_date
 
     while date_to_update < checkout_date:
@@ -77,6 +90,7 @@ def submit_reservation():
     con.close()
 
     return jsonify({'message': 'Reservation successful!'})
+
 
 @app.route('/get-room-status')
 def get_room_status():
