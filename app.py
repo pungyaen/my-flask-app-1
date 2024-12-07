@@ -52,7 +52,14 @@ def submit_reservation():
 
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
-    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
+
+    # ดึงวันที่และเวลาในรูปแบบที่ต้องการ เช่น 'YYYY-MM-DD_HH-MM-SS'
+    current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    # ใช้ชื่อไฟล์ใหม่ที่สร้างจากวันที่และเวลา
+    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_time}_{slip.filename}")
+
+    # บันทึกไฟล์ที่อัพโหลดด้วยชื่อใหม่
     slip.save(slip_filename)
 
     # ตรวจสอบความพร้อมของห้อง
