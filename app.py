@@ -275,6 +275,7 @@ def update_room_availability():
 
         time.sleep(30)
 
+import requests
 import base64
 
 file_path = "instance/reservations.db"
@@ -282,27 +283,32 @@ repo = "pungyaen/my-flask-app-1"
 path_in_repo = "instance/reservations.db"
 commit_message = "Update reservations.db"
 branch = "master"  # หรือ master
-token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
+token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
 
 
 def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
+    # อ่านไฟล์
     with open(file_path, "rb") as file:
         content = file.read()
         content_b64 = base64.b64encode(content).decode("utf-8")
 
+    # URL สำหรับ API GitHub
     url = f"https://api.github.com/repos/{repo}/contents/{path_in_repo}"
+
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
 
-    # Check if the file already exists in the repository
+    # ตรวจสอบว่าไฟล์มีอยู่แล้วหรือไม่
     response = requests.get(url, headers=headers)
+
     if response.status_code == 200:
         sha = response.json()["sha"]
     else:
         sha = None
 
+    # ข้อมูลที่จะส่ง
     data = {
         "message": commit_message,
         "content": content_b64,
@@ -310,8 +316,9 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
     }
 
     if sha:
-        data["sha"] = sha
+        data["sha"] = sha  # ถ้ามีไฟล์ที่มีอยู่แล้วให้ใส่ sha ของไฟล์นั้น
 
+    # ส่งคำขอ PUT
     response = requests.put(url, json=data, headers=headers)
 
     if response.status_code in [200, 201]:
