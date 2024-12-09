@@ -283,7 +283,7 @@ repo = "pungyaen/my-flask-app-1"
 path_in_repo = "instance/reservations.db"
 commit_message = "Update reservations.db"
 branch = "master"  # หรือ master
-token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
+token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
 
 
 
