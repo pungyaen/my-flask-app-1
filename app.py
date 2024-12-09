@@ -283,9 +283,8 @@ repo = "pungyaen/my-flask-app-1"
 path_in_repo = "instance/reservations.db"
 commit_message = "Update reservations.db"
 branch = "master"  # หรือ master
-token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
-
-#git remote set-url origin-1 https://pungyaen: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@github.com/pungyaen/my-flask-app.git
+github_token = os.getenv('GITHUB_TOKEN')
+token = github_token
 
 
 def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
