@@ -7,6 +7,7 @@ import threading
 import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
+import base64
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -273,6 +274,53 @@ def update_room_availability():
             continue
 
         time.sleep(30)
+
+import base64
+
+file_path = "instance/reservations.db"
+repo = "pungyaen/my-flask-app-1"
+path_in_repo = "instance/reservations.db"
+commit_message = "Update reservations.db"
+branch = "master"  # หรือ master
+token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
+
+def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
+    with open(file_path, "rb") as file:
+        content = file.read()
+        content_b64 = base64.b64encode(content).decode("utf-8")
+
+    url = f"https://api.github.com/repos/{repo}/contents/{path_in_repo}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Check if the file already exists in the repository
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        sha = response.json()["sha"]
+    else:
+        sha = None
+
+    data = {
+        "message": commit_message,
+        "content": content_b64,
+        "branch": branch
+    }
+
+    if sha:
+        data["sha"] = sha
+
+    response = requests.put(url, json=data, headers=headers)
+
+    if response.status_code in [200, 201]:
+        print(f"File '{path_in_repo}' successfully uploaded to GitHub.")
+    else:
+        print(f"Failed to upload file to GitHub: {response.status_code}")
+        print(response.json())
+
+upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
+
 
 if __name__ == '__main__':
     with app.app_context():
