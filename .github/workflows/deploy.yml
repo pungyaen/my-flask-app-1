@@ -7,23 +7,32 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # หรือ ubuntu-24.04 เมื่อเปลี่ยนแปลง
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Python
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: '3.9'  # ใช้เวอร์ชันที่รองรับการติดตั้ง blinker 1.9.0
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Upload to GitHub
+      - name: Verify dependencies
+        run: pip list
+
+      - name: Run application
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # ใช้ Secret ที่เก็บโทเคน
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
         run: |
-          python app.py  # ใช้โทเคนในการเชื่อมต่อกับ GitHub API
+          python app.py  # เพิ่มขั้นตอนการตรวจสอบ logs ถ้าจำเป็น
+
+      - name: Check reservation.db status
+        run: |
+          ls -l  # ตรวจสอบสถานะของไฟล์ reservation.db
+

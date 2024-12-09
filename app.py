@@ -331,6 +331,22 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
 upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
 
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def update_reservation():
+    try:
+        # สมมติว่ามีโค้ดสำหรับอัปเดตฐานข้อมูล
+        # ...
+        logging.info('Reservation updated successfully.')
+    except Exception as e:
+        logging.error(f'Failed to update reservation: {e}')
+
+if __name__ == "__main__":
+    update_reservation()
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
