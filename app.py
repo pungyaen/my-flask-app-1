@@ -119,6 +119,8 @@ def submit_reservation():
     line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
     send_line_image('reservation_details.jpg', line_token)
 
+    upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
+
     return jsonify({'message': 'reservation form was sent (*booking completed when full transaction completed only*)'})
 
 @app.route('/get-room-status')
@@ -291,6 +293,7 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
     # อ่านไฟล์
     with open(file_path, "rb") as file:
         content = file.read()
+        print(content)  # ดูข้อมูลที่อ่านจากไฟล์
         content_b64 = base64.b64encode(content).decode("utf-8")
 
     # URL สำหรับ API GitHub
@@ -327,8 +330,6 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
     else:
         print(f"Failed to upload file to GitHub: {response.status_code}")
         print(response.json())
-
-upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
 
 if __name__ == '__main__':
