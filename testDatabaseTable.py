@@ -37,4 +37,3 @@ if __name__ == '__main__':
         db.create_all()  # สร้างตารางในฐานข้อมูลหากยังไม่มี
         initialize_room_availability()  # เรียกฟังก์ชันเพื่อเพิ่มข้อมูล
 
-# git reposition token repo/workflow "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"

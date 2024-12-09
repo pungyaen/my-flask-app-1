@@ -5,6 +5,9 @@ import os
 from datetime import datetime, timedelta
 import threading
 import time
+from PIL import Image, ImageDraw, ImageFont
+import requests
+import base64
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -50,8 +53,19 @@ def submit_reservation():
 
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
-    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], slip.filename)
+
+    # ดึงวันที่และเวลาในรูปแบบที่ต้องการ เช่น 'YYYY-MM-DD_HH-MM-SS'
+    current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    # ใช้ชื่อไฟล์ใหม่ที่สร้างจากวันที่และเวลา
+    slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_time}_{slip.filename}")
+
+    # บันทึกไฟล์ที่อัพโหลดด้วยชื่อใหม่
     slip.save(slip_filename)
+
+    # ส่งภาพผ่าน LINE
+    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    send_line_image_2(slip_filename, line_token)
 
     # ตรวจสอบความพร้อมของห้อง
     checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
@@ -93,7 +107,21 @@ def submit_reservation():
     con.commit()
     con.close()
 
-    return jsonify({'message': 'เจ้าหน้าที่ได้รับใบจองแล้ว (*การจองจะสำเร็จเมื่อแนบสลิปโอนเงินและมียอดเงินเข้าครบถ้วนแล้วเท่านั้น*)'})
+    # ดึงข้อมูลการจองทั้งหมด
+    reservations = get_reservation_data()
+    # ดึงข้อมูลห้องว่างทั้งหมด
+    room_availabilities = get_room_availability()
+    # สร้างภาพ
+    img = create_reservation_image(reservations, room_availabilities, new_reservation.id)
+    save_image(img)
+
+    # ส่งภาพผ่าน LINE
+    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    send_line_image('reservation_details.jpg', line_token)
+
+    upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
+
+    return jsonify({'message': 'reservation form was sent (*booking completed when full transaction completed only*)'})
 
 @app.route('/get-room-status')
 def get_room_status():
@@ -111,36 +139,118 @@ def get_room_status():
             })
     return jsonify(events)
 
+def get_reservation_data():
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+    cur.execute("SELECT * FROM reservation")
+    reservations = cur.fetchall()
+    con.close()
+    return reservations
+
+def get_room_availability():
+    con = sqlite3.connect('instance/reservations.db')
+    cur = con.cursor()
+    cur.execute("SELECT * FROM room_availability")
+    room_availabilities = cur.fetchall()
+    con.close()
+    return room_availabilities
+
+def create_reservation_image(reservations, room_availabilities, latest_reservation_id):
+    img = Image.new('RGB', (800, 1000), color='white')
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font = ImageFont.truetype("arial.ttf", 15)
+        bold_font = ImageFont.truetype("arialbd.ttf", 15)
+    except IOError:
+        font = ImageFont.load_default()
+        bold_font = ImageFont.load_default()
+
+    y_offset = 10
+    draw.text((10, y_offset), "Reservations:", font=font, fill='black')
+    y_offset += 30
+
+    for reservation in reservations:
+        idd = reservation[0]
+        name = reservation[1]
+        phone = reservation[2]
+        checkin = reservation[3]
+        checkout = reservation[4]
+        slip = reservation[5]
+        line = f"ID: {idd}, Name: {name}, Phone: {phone}, Check-in: {checkin}, Check-out: {checkout}, Slip: {slip}"
+        if idd == latest_reservation_id:
+            draw.text((10, y_offset), line, font=bold_font, fill='red')
+        else:
+            draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
+
+    y_offset += 20
+    draw.text((10, y_offset), "Room Availability:", font=font, fill='black')
+    y_offset += 30
+
+    for room in room_availabilities:
+        date = room[1]
+        available_rooms = room[2]
+        line = f"Date: {date}, Available Rooms: {available_rooms}"
+        draw.text((10, y_offset), line, font=font, fill='black')
+        y_offset += 20
+
+    return img
+
+def save_image(img):
+    img.save('reservation_details.jpg')
+
+def send_line_image(image_path, token):
+    url = 'https://notify-api.line.me/api/notify'
+    headers = {
+        'Authorization': f'Bearer {token}',
+    }
+    message = {'message': 'รายละเอียดการจองและจำนวนห้องว่าง'}
+    files = {'imageFile': open(image_path, 'rb')}
+    response = requests.post(url, headers=headers, data=message, files=files)
+    return response
+
+def send_line_image_2(image_path, token):
+    url = 'https://notify-api.line.me/api/notify'
+    headers = {
+        'Authorization': f'Bearer {token}',
+    }
+
+    message = {'message': 'มีการอัปโหลดสลิปโอนเงินใหม่'}
+    files = {'imageFile': open(image_path, 'rb')}
+
+    # ส่ง POST request ไปยัง LINE Notify
+    response = requests.post(url, headers=headers, data=message, files=files)
+
+    # ปิดไฟล์หลังจากส่ง
+    files['imageFile'].close()
+
+    return response
+
 def initialize_room_availability():
-    start_date = datetime.now().date()
-    end_date = start_date + timedelta(days=30)  # สร้างข้อมูลสำหรับ 30 วันข้างหน้า
+    start_date = datetime.now().date()  # วันที่เริ่มต้นเป็นวันปัจจุบัน
+    end_date = start_date + timedelta(days=60)  # กำหนดระยะเวลา 60 วันข้างหน้า
 
     current_date = start_date
     while current_date <= end_date:
-        day_of_week = current_date.weekday()
-        if day_of_week < 5:  # Monday (0) to Friday (4)
-            available_rooms = 5  # เปลี่ยนค่าเริ่มต้นเป็น 5
-        else:  # Saturday (5) and Sunday (6)
-            available_rooms = 5
+        date_str = current_date.strftime('%Y-%m-%d')  # แปลงวันที่เป็น string ในรูปแบบ YYYY-MM-DD
+        available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
 
-        date_str = current_date.strftime('%Y-%m-%d')
+        # เพิ่มข้อมูลลงในฐานข้อมูล
         room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
         db.session.add(room_availability)
+
+        # ขยับวันที่ไปวันถัดไป
         current_date += timedelta(days=1)
 
-    db.session.commit()
-
+    db.session.commit()  # คอมมิทเพื่อบันทึกข้อมูลลงในฐานข้อมูล
 
 def update_room_availability():
     while True:
         try:
             con = sqlite3.connect('instance/reservations.db')
             cur = con.cursor()
-
-            # รีเซ็ตจำนวนห้องว่างตามค่าเริ่มต้น (***ใส่จำนวนห้องว่างทั้งหมด***)
             cur.execute("UPDATE room_availability SET available_rooms = 3")
-
-            # ดึงข้อมูลการจองทั้งหมด
             cur.execute("SELECT checkin, checkout FROM reservation")
             reservations = cur.fetchall()
 
@@ -154,8 +264,7 @@ def update_room_availability():
                     cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
                     available_rooms = cur.fetchone()[0]
                     available_rooms -= 1
-                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?",
-                                (available_rooms, date_str))
+                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
                     date_to_update += timedelta(days=1)
 
             con.commit()
@@ -165,18 +274,69 @@ def update_room_availability():
             time.sleep(1)
             continue
 
-        # อัปเดตทุก 30 วินาที
         time.sleep(30)
 
+import requests
+import base64
+
+file_path = "instance/reservations.db"
+repo = "pungyaen/my-flask-app-1"
+path_in_repo = "instance/reservations.db"
+commit_message = "Update reservations.db"
+branch = "master"  # หรือ master
+github_token = os.getenv('GITHUB_TOKEN')
+token = github_token
+
+
+def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
+    # อ่านไฟล์
+    with open(file_path, "rb") as file:
+        content = file.read()
+        print(content)  # ดูข้อมูลที่อ่านจากไฟล์
+        content_b64 = base64.b64encode(content).decode("utf-8")
+
+    # URL สำหรับ API GitHub
+    url = f"https://api.github.com/repos/{repo}/contents/{path_in_repo}"
+
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # ตรวจสอบว่าไฟล์มีอยู่แล้วหรือไม่
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        sha = response.json()["sha"]
+    else:
+        sha = None
+
+    # ข้อมูลที่จะส่ง
+    data = {
+        "message": commit_message,
+        "content": content_b64,
+        "branch": branch
+    }
+
+    if sha:
+        data["sha"] = sha  # ถ้ามีไฟล์ที่มีอยู่แล้วให้ใส่ sha ของไฟล์นั้น
+
+    # ส่งคำขอ PUT
+    response = requests.put(url, json=data, headers=headers)
+
+    if response.status_code in [200, 201]:
+        print(f"File '{path_in_repo}' successfully uploaded to GitHub.")
+    else:
+        print(f"Failed to upload file to GitHub: {response.status_code}")
+        print(response.json())
 
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # สร้างตารางในฐานข้อมูล
+        db.create_all()
         if RoomAvailability.query.count() == 0:
-            initialize_room_availability()  # เติมข้อมูลเริ่มต้น
+            initialize_room_availability()
 
-        # เริ่มกระบวนการอัปเดตจำนวนห้องว่างใน background
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()
 

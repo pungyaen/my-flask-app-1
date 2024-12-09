@@ -5,6 +5,8 @@ import os
 from datetime import datetime, timedelta
 import threading
 import time
+from apscheduler.schedulers.background import BackgroundScheduler  # สำหรับการตั้งเวลา
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
@@ -77,6 +79,10 @@ def submit_reservation():
 
     while date_to_check < checkout_date:
         date_str = date_to_check.strftime('%Y-%m-%d')
+        room = RoomAvailability.query.filter_by(date=date_str).first()
+        if room:
+            room.available_rooms -= 1
+            db.session.commit()
         cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
         row = cur.fetchone()
         if row is None:
@@ -228,23 +234,22 @@ def send_line_image_2(image_path, token):
     return response
 
 def initialize_room_availability():
-    start_date = datetime.now().date()
-    end_date = start_date + timedelta(days=30)
+    start_date = datetime.now().date()  # วันที่เริ่มต้นเป็นวันปัจจุบัน
+    end_date = start_date + timedelta(days=60)  # กำหนดระยะเวลา 60 วันข้างหน้า
 
     current_date = start_date
     while current_date <= end_date:
-        day_of_week = current_date.weekday()
-        if day_of_week < 5:
-            available_rooms = 5
-        else:
-            available_rooms = 5
+        date_str = current_date.strftime('%Y-%m-%d')  # แปลงวันที่เป็น string ในรูปแบบ YYYY-MM-DD
+        available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
 
-        date_str = current_date.strftime('%Y-%m-%d')
+        # เพิ่มข้อมูลลงในฐานข้อมูล
         room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
         db.session.add(room_availability)
+
+        # ขยับวันที่ไปวันถัดไป
         current_date += timedelta(days=1)
 
-    db.session.commit()
+    db.session.commit()  # คอมมิทเพื่อบันทึกข้อมูลลงในฐานข้อมูล
 
 def update_room_availability():
     while True:
@@ -277,8 +282,6 @@ def update_room_availability():
 
         time.sleep(30)
 
-import requests
-import base64
 
 file_path = "instance/reservations.db"
 repo = "pungyaen/my-flask-app-1"
@@ -332,12 +335,54 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
         print(response.json())
 
 
+# Update Room Availability daily at 5 AM
+def update_room_availability2():
+    with app.app_context():
+        start_date = datetime.now().date()
+        end_date = start_date + timedelta(days=60)
+
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            room = RoomAvailability.query.filter_by(date=date_str).first()
+            if room:
+                room.available_rooms = 3  # Reset to the initial value, or any logic you prefer
+                db.session.commit()
+            current_date += timedelta(days=1)
+
+
+# Update Reservations every day at 5 AM
+def update_reservations2():
+    with app.app_context():
+        current_date = datetime.now().date()
+        reservations_to_remove = Reservation.query.filter(Reservation.checkout <= str(current_date)).all()
+
+        for reservation in reservations_to_remove:
+            db.session.delete(reservation)
+
+        db.session.commit()
+
+        # Reorder reservations based on checkin date (for consistency)
+        all_reservations = Reservation.query.order_by(Reservation.checkin).all()
+        for reservation in all_reservations:
+            print(reservation.name, reservation.checkin)  # You can log to see them
+
+
+# Create a scheduler to run both update functions at 5 AM daily
+def start_scheduled_tasks():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(update_room_availability2, 'interval', days=1, start_date='2024-12-09 05:00:00')
+    scheduler.add_job(update_reservations2, 'interval', days=1, start_date='2024-12-09 05:00:00')
+    scheduler.start()
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         if RoomAvailability.query.count() == 0:
             initialize_room_availability()
 
+        start_scheduled_tasks()  # Start the scheduler to update room availability and reservations
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()
 
