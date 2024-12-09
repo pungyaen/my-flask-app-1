@@ -282,7 +282,7 @@ repo = "pungyaen/my-flask-app-1"
 path_in_repo = "instance/reservations.db"
 commit_message = "Update reservations.db"
 branch = "master"  # หรือ master
-token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
+token = "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"  # เปลี่ยนเป็นโทเคนของคุณ
 
 def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
     with open(file_path, "rb") as file:
