@@ -1,0 +1,29 @@
+name: Deploy to GitHub
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # หรือ ubuntu-24.04 เมื่อเปลี่ยนแปลง
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Upload to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # ใช้ Secret ที่เก็บโทเคน
+        run: |
+          python app.py  # ใช้โทเคนในการเชื่อมต่อกับ GitHub API
