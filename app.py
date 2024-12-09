@@ -371,8 +371,8 @@ def update_reservations2():
 # Create a scheduler to run both update functions at 5 AM daily
 def start_scheduled_tasks():
     scheduler = BackgroundScheduler()
-    scheduler.add_job(update_room_availability2, 'interval', days=1, start_date='2024-12-09 01:30:00')
-    scheduler.add_job(update_reservations2, 'interval', days=1, start_date='2024-12-09 01:30:00')
+    scheduler.add_job(update_room_availability2, 'interval', days=1, start_date='2024-12-09 01:35:00')
+    scheduler.add_job(update_reservations2, 'interval', days=1, start_date='2024-12-09 01:35:00')
     scheduler.start()
 
 
