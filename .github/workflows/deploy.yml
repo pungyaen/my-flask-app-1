@@ -30,9 +30,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         run: |
+          echo "Running application..."
           python app.py  # เพิ่มขั้นตอนการตรวจสอบ logs ถ้าจำเป็น
 
       - name: Check reservation.db status
         run: |
           ls -l  # ตรวจสอบสถานะของไฟล์ reservation.db
+
+      - name: Check GITHUB_TOKEN
+        run: echo $GITHUB_TOKEN
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
