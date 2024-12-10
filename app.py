@@ -345,7 +345,7 @@ def update_room_availability():
 def start_scheduler():
     if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         scheduler = BackgroundScheduler()
-        scheduler.add_job(update_room_availability, 'interval', hours=0, minutes=1, replace_existing=True)
+        scheduler.add_job(update_room_availability, 'interval', hours=0, minute=1, replace_existing=True)
         scheduler.start()
         print("Scheduler started, job will run every 24 hours")
 
