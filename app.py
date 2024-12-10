@@ -3,11 +3,13 @@ from flask_sqlalchemy import SQLAlchemy
 import sqlite3
 import os
 from datetime import datetime, timedelta
-import threading
 import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.executors.pool import ThreadPoolExecutor
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -31,7 +33,6 @@ class RoomAvailability(db.Model):
 
 @app.route('/')
 def hotel_information():
-    update_room_availability()  # เรียกฟังก์ชันนี้ทุกครั้งที่หน้าเว็บถูกเข้าถึง
     return render_template('hotel_information.html')
 
 @app.route('/status_room')
@@ -317,7 +318,6 @@ def update_room_availability():
             with app.app_context():
                 print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
                 start_date = datetime.now().date()
-                end_date = start_date + timedelta(days=60)
                 current_date = start_date
                 # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
                 RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
@@ -330,31 +330,8 @@ def update_room_availability():
                         f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
                 db.session.commit()
+                print("room_availability&reservations updated!")
 
-            con = sqlite3.connect('instance/reservations.db')
-            cur = con.cursor()
-            cur.execute("SELECT checkin, checkout FROM reservation")
-            reservations = cur.fetchall()
-
-            for reservation in reservations:
-                checkin_date = datetime.strptime(reservation[0], '%Y-%m-%d').date()
-                checkout_date = datetime.strptime(reservation[1], '%Y-%m-%d').date()
-                current_date = datetime.now().date()
-                if checkin_date < current_date:
-                    checkin_date = current_date
-                date_to_update = checkin_date
-
-                while date_to_update < checkout_date:
-                    date_str = date_to_update.strftime('%Y-%m-%d')
-                    cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
-                    available_rooms = cur.fetchone()[0]
-                    available_rooms -= 1
-                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
-                    date_to_update += timedelta(days=1)
-
-            con.commit()
-            con.close()
-            print("room_availability&reservations updated!")
         except sqlite3.OperationalError as e:
             print(f"SQLite error: {e}. Retrying in 1 second...")
             time.sleep(1)
@@ -363,8 +340,26 @@ def update_room_availability():
         i = i + 1
         time.sleep(1)
 
+def start_scheduler():
+    jobstores = {
+        'default': SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
+    }
+    executors = {
+        'default': ThreadPoolExecutor(20)
+    }
+    job_defaults = {
+        'coalesce': False,
+        'max_instances': 3
+    }
+
+    scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults)
+    scheduler.add_job(func=update_room_availability, trigger='interval', hour=1, minute=59, replace_existing=True)
+    scheduler.start()
+    print("Scheduler started!")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        start_scheduler()
 
     app.run(debug=True)
