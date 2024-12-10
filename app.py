@@ -8,10 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 import atexit
-
-from scipy.constants import minute
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
