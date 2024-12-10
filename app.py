@@ -165,8 +165,8 @@ def create_reservation_image_with_details(reservation_details, slip_path):
 
     try:
         # ฟอนต์
-        font = ImageFont.truetype("arial.ttf", 20)
-        bold_font = ImageFont.truetype("arialbd.ttf", 20)
+        font = ImageFont.truetype("arial.ttf", 40)
+        bold_font = ImageFont.truetype("arialbd.ttf", 40)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
@@ -199,8 +199,8 @@ def create_reservation_image(reservations, room_availabilities, latest_reservati
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("arial.ttf", 15)
-        bold_font = ImageFont.truetype("arialbd.ttf", 15)
+        font = ImageFont.truetype("arial.ttf", 20)
+        bold_font = ImageFont.truetype("arialbd.ttf", 20)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
@@ -323,17 +323,6 @@ def update_room_availability():
                 RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
                 # ลบการจองที่หมดอายุ
                 Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
-                while current_date <= end_date:
-                    date_str = current_date.strftime('%Y-%m-%d')
-                    available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
-                    room_availability = RoomAvailability.query.filter_by(date=date_str).first()
-                    if room_availability:
-                        room_availability.available_rooms = available_rooms
-                    else:
-                        room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
-                        db.session.add(room_availability)
-                    current_date += timedelta(days=1)
-
                 # เรียงลำดับการจองตามวันที่ checkin
                 reservations = Reservation.query.order_by(Reservation.checkin).all()
                 for reservation in reservations:
@@ -341,7 +330,6 @@ def update_room_availability():
                         f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
                 db.session.commit()
-                print("room_availability&reservations updated!")
 
             con = sqlite3.connect('instance/reservations.db')
             cur = con.cursor()
@@ -366,6 +354,7 @@ def update_room_availability():
 
             con.commit()
             con.close()
+            print("room_availability&reservations updated!")
         except sqlite3.OperationalError as e:
             print(f"SQLite error: {e}. Retrying in 1 second...")
             time.sleep(1)
