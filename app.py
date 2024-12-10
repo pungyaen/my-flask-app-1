@@ -7,8 +7,7 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
-from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
+import threading
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -32,6 +31,8 @@ class RoomAvailability(db.Model):
 
 @app.route('/')
 def hotel_information():
+    update_thread = threading.Thread(target=update_room_availability)
+    update_thread.start()
     return render_template('hotel_information.html')
 
 @app.route('/status_room')
@@ -311,8 +312,7 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
         print(response.json())
 
 def update_room_availability():
-    i = 0
-    while i < 1:
+    while True:
         try:
             with app.app_context():
                 print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
@@ -336,22 +336,10 @@ def update_room_availability():
             time.sleep(1)
             continue
 
-        i = i + 1
-        time.sleep(1)
-
-def start_scheduler():
-    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(update_room_availability, 'interval', minutes=1, replace_existing=True)
-        scheduler.start()
-        print("Scheduler started, job will run every 1 minute")
-
-        # Shut down the scheduler when exiting the app
-        atexit.register(lambda: scheduler.shutdown())
+        time.sleep(60)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        start_scheduler()
 
     app.run(debug=True)
