@@ -330,6 +330,14 @@ def update_room_availability():
             db.session.commit()
             print("room_availability&reservations updated!")
 
+            # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
+            reservations = Reservation.query.order_by(Reservation.checkin).all()
+            room_availabilities = get_room_availability()
+            img = create_reservation_image(reservations, room_availabilities, new_reservation.id)
+            save_image(img)
+            line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+            send_line_image('reservation_details.jpg', line_token)
+
         time.sleep(60)
 
 if __name__ == '__main__':
