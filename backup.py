@@ -24,16 +24,14 @@ class Reservation(db.Model):
     checkout = db.Column(db.String(10), nullable=False)
     slip = db.Column(db.String(100), nullable=False)
 
-
 class RoomAvailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
 
-
 @app.route('/')
-def hotel_informaion():
-    return render_template('hotel_informaion.html')
+def hotel_information():
+    return render_template('hotel_information.html')
 
 @app.route('/status_room')
 def status_room():
@@ -54,13 +52,8 @@ def submit_reservation():
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
 
-    # ดึงวันที่และเวลาในรูปแบบที่ต้องการ เช่น 'YYYY-MM-DD_HH-MM-SS'
     current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    # ใช้ชื่อไฟล์ใหม่ที่สร้างจากวันที่และเวลา
     slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_time}_{slip.filename}")
-
-    # บันทึกไฟล์ที่อัพโหลดด้วยชื่อใหม่
     slip.save(slip_filename)
 
     # ส่งภาพผ่าน LINE
@@ -227,58 +220,6 @@ def send_line_image_2(image_path, token):
 
     return response
 
-def initialize_room_availability():
-    start_date = datetime.now().date()  # วันที่เริ่มต้นเป็นวันปัจจุบัน
-    end_date = start_date + timedelta(days=60)  # กำหนดระยะเวลา 60 วันข้างหน้า
-
-    current_date = start_date
-    while current_date <= end_date:
-        date_str = current_date.strftime('%Y-%m-%d')  # แปลงวันที่เป็น string ในรูปแบบ YYYY-MM-DD
-        available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
-
-        # เพิ่มข้อมูลลงในฐานข้อมูล
-        room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
-        db.session.add(room_availability)
-
-        # ขยับวันที่ไปวันถัดไป
-        current_date += timedelta(days=1)
-
-    db.session.commit()  # คอมมิทเพื่อบันทึกข้อมูลลงในฐานข้อมูล
-
-def update_room_availability():
-    while True:
-        try:
-            con = sqlite3.connect('instance/reservations.db')
-            cur = con.cursor()
-            cur.execute("UPDATE room_availability SET available_rooms = 3")
-            cur.execute("SELECT checkin, checkout FROM reservation")
-            reservations = cur.fetchall()
-
-            for reservation in reservations:
-                checkin_date = datetime.strptime(reservation[0], '%Y-%m-%d')
-                checkout_date = datetime.strptime(reservation[1], '%Y-%m-%d')
-                date_to_update = checkin_date
-
-                while date_to_update < checkout_date:
-                    date_str = date_to_update.strftime('%Y-%m-%d')
-                    cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
-                    available_rooms = cur.fetchone()[0]
-                    available_rooms -= 1
-                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
-                    date_to_update += timedelta(days=1)
-
-            con.commit()
-            con.close()
-        except sqlite3.OperationalError as e:
-            print(f"SQLite error: {e}. Retrying in 1 second...")
-            time.sleep(1)
-            continue
-
-        time.sleep(30)
-
-import requests
-import base64
-
 file_path = "instance/reservations.db"
 repo = "pungyaen/my-flask-app-1"
 path_in_repo = "instance/reservations.db"
@@ -286,7 +227,6 @@ commit_message = "Update reservations.db"
 branch = "master"  # หรือ master
 github_token = os.getenv('GITHUB_TOKEN')
 token = github_token
-
 
 def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token):
     # อ่านไฟล์
@@ -330,12 +270,71 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
         print(f"Failed to upload file to GitHub: {response.status_code}")
         print(response.json())
 
+def update_room_availability():
+    while True:
+        try:
+            with app.app_context():
+                print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
+                start_date = datetime.now().date()
+                end_date = start_date + timedelta(days=60)
+                current_date = start_date
+                # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
+                RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
+                # ลบการจองที่หมดอายุ
+                Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
+                # เรียงลำดับการจองตามวันที่ checkin
+                reservations = Reservation.query.order_by(Reservation.checkin).all()
+                while current_date <= end_date:
+                    date_str = current_date.strftime('%Y-%m-%d')
+                    available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
+                    room_availability = RoomAvailability.query.filter_by(date=date_str).first()
+                    if room_availability:
+                        room_availability.available_rooms = available_rooms
+                    else:
+                        room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
+                        db.session.add(room_availability)
+                    current_date += timedelta(days=1)
+                    # แสดงผลการจอง
+                for reservation in reservations:
+                    print(
+                        f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
+
+                db.session.commit()
+                print("room_availability&reservations updated!")
+
+            con = sqlite3.connect('instance/reservations.db')
+            cur = con.cursor()
+            cur.execute("SELECT checkin, checkout FROM reservation")
+            reservations = cur.fetchall()
+
+            for reservation in reservations:
+                checkin_date = datetime.strptime(reservation[0], '%Y-%m-%d').date()
+                checkout_date = datetime.strptime(reservation[1], '%Y-%m-%d').date()
+                current_date = datetime.now().date()
+                if checkin_date < current_date:
+                    checkin_date = current_date
+                date_to_update = checkin_date
+
+                while date_to_update < checkout_date:
+                    date_str = date_to_update.strftime('%Y-%m-%d')
+                    cur.execute("SELECT available_rooms FROM room_availability WHERE date = ?", (date_str,))
+                    available_rooms = cur.fetchone()[0]
+                    available_rooms -= 1
+                    cur.execute("UPDATE room_availability SET available_rooms = ? WHERE date = ?", (available_rooms, date_str))
+                    date_to_update += timedelta(days=1)
+
+            con.commit()
+            con.close()
+        except sqlite3.OperationalError as e:
+            print(f"SQLite error: {e}. Retrying in 1 second...")
+            time.sleep(1)
+            continue
+
+        time.sleep(30)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        if RoomAvailability.query.count() == 0:
-            initialize_room_availability()
 
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()

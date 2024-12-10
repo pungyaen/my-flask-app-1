@@ -30,8 +30,9 @@ class RoomAvailability(db.Model):
     available_rooms = db.Column(db.Integer, nullable=False)
 
 @app.route('/')
-def hotel_informaion():
-    return render_template('hotel_informaion.html')
+def hotel_information():
+    update_room_availability()  # เรียกฟังก์ชันนี้ทุกครั้งที่หน้าเว็บถูกเข้าถึง
+    return render_template('hotel_information.html')
 
 @app.route('/status_room')
 def status_room():
@@ -55,10 +56,18 @@ def submit_reservation():
     current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     slip_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_time}_{slip.filename}")
     slip.save(slip_filename)
+    reservation_details = {
+        'name': name,
+        'phone': phone,
+        'checkin': checkin,
+        'checkout': checkout,
+    }
+    # สร้างภาพที่มีรายละเอียดการจอง
+    image_path = create_reservation_image_with_details(reservation_details, slip_filename)
 
     # ส่งภาพผ่าน LINE
     line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
-    send_line_image_2(slip_filename, line_token)
+    send_line_image_2(image_path, line_token)
 
     # ตรวจสอบความพร้อมของห้อง
     checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
@@ -100,8 +109,8 @@ def submit_reservation():
     con.commit()
     con.close()
 
-    # ดึงข้อมูลการจองทั้งหมด
-    reservations = get_reservation_data()
+    # ดึงข้อมูลการจองทั้งหมดที่เรียงลำดับตามวันที่ check in ก่อนแล้ว
+    reservations = Reservation.query.order_by(Reservation.checkin).all()
     # ดึงข้อมูลห้องว่างทั้งหมด
     room_availabilities = get_room_availability()
     # สร้างภาพ
@@ -148,6 +157,43 @@ def get_room_availability():
     con.close()
     return room_availabilities
 
+def create_reservation_image_with_details(reservation_details, slip_path):
+    # สร้างภาพพื้นหลัง (white background)
+    img_width, img_height = 800, 1000  # ขนาดภาพ
+    img = Image.new('RGB', (img_width, img_height), color='white')
+    draw = ImageDraw.Draw(img)
+
+    try:
+        # ฟอนต์
+        font = ImageFont.truetype("arial.ttf", 20)
+        bold_font = ImageFont.truetype("arialbd.ttf", 20)
+    except IOError:
+        font = ImageFont.load_default()
+        bold_font = ImageFont.load_default()
+
+    y_offset = 20
+    margin_left = 20
+
+    # ข้อมูลสำหรับแสดงในรูปภาพ
+    draw.text((margin_left, y_offset), f"Name: {reservation_details['name']}", font=bold_font, fill='black')
+    y_offset += 30
+    draw.text((margin_left, y_offset), f"Phone: {reservation_details['phone']}", font=font, fill='black')
+    y_offset += 30
+    draw.text((margin_left, y_offset), f"Check-in: {reservation_details['checkin']}", font=font, fill='black')
+    y_offset += 30
+    draw.text((margin_left, y_offset), f"Check-out: {reservation_details['checkout']}", font=font, fill='black')
+    y_offset += 30
+
+    # แสดงสลิป
+    slip_image = Image.open(slip_path)
+    slip_image = slip_image.resize((660, 490))  # ปรับขนาดของสลิป
+    img.paste(slip_image, (margin_left, y_offset))  # วางสลิปในภาพ
+    y_offset += 310  # ขยับตำแหน่งหลังจากสลิป
+
+    # บันทึกภาพ
+    img.save('reservation_details_with_slip.jpg')
+    return 'reservation_details_with_slip.jpg'
+
 def create_reservation_image(reservations, room_availabilities, latest_reservation_id):
     img = Image.new('RGB', (800, 1000), color='white')
     draw = ImageDraw.Draw(img)
@@ -164,13 +210,12 @@ def create_reservation_image(reservations, room_availabilities, latest_reservati
     y_offset += 30
 
     for reservation in reservations:
-        idd = reservation[0]
-        name = reservation[1]
-        phone = reservation[2]
-        checkin = reservation[3]
-        checkout = reservation[4]
-        slip = reservation[5]
-        line = f"ID: {idd}, Name: {name}, Phone: {phone}, Check-in: {checkin}, Check-out: {checkout}, Slip: {slip}"
+        idd = reservation.id
+        name = reservation.name
+        phone = reservation.phone
+        checkin = reservation.checkin
+        checkout = reservation.checkout
+        line = f"ID: {idd}, Name: {name}, Phone: {phone}, Check-in: {checkin}, Check-out: {checkout}"
         if idd == latest_reservation_id:
             draw.text((10, y_offset), line, font=bold_font, fill='red')
         else:
@@ -201,6 +246,7 @@ def send_line_image(image_path, token):
     message = {'message': 'รายละเอียดการจองและจำนวนห้องว่าง'}
     files = {'imageFile': open(image_path, 'rb')}
     response = requests.post(url, headers=headers, data=message, files=files)
+    files['imageFile'].close()
     return response
 
 def send_line_image_2(image_path, token):
@@ -208,16 +254,10 @@ def send_line_image_2(image_path, token):
     headers = {
         'Authorization': f'Bearer {token}',
     }
-
-    message = {'message': 'มีการอัปโหลดสลิปโอนเงินใหม่'}
+    message = {'message': 'รายละเอียดการจองและสลิปโอนเงิน'}
     files = {'imageFile': open(image_path, 'rb')}
-
-    # ส่ง POST request ไปยัง LINE Notify
     response = requests.post(url, headers=headers, data=message, files=files)
-
-    # ปิดไฟล์หลังจากส่ง
     files['imageFile'].close()
-
     return response
 
 file_path = "instance/reservations.db"
@@ -271,7 +311,8 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
         print(response.json())
 
 def update_room_availability():
-    while True:
+    i = 0
+    while i < 1:
         try:
             with app.app_context():
                 print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
@@ -282,8 +323,6 @@ def update_room_availability():
                 RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
                 # ลบการจองที่หมดอายุ
                 Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
-                # เรียงลำดับการจองตามวันที่ checkin
-                reservations = Reservation.query.order_by(Reservation.checkin).all()
                 while current_date <= end_date:
                     date_str = current_date.strftime('%Y-%m-%d')
                     available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
@@ -294,7 +333,9 @@ def update_room_availability():
                         room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
                         db.session.add(room_availability)
                     current_date += timedelta(days=1)
-                    # แสดงผลการจอง
+
+                # เรียงลำดับการจองตามวันที่ checkin
+                reservations = Reservation.query.order_by(Reservation.checkin).all()
                 for reservation in reservations:
                     print(
                         f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
@@ -330,13 +371,11 @@ def update_room_availability():
             time.sleep(1)
             continue
 
-        time.sleep(30)
+        i = i + 1
+        time.sleep(1)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-
-        update_thread = threading.Thread(target=update_room_availability)
-        update_thread.start()
 
     app.run(debug=True)

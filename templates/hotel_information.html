@@ -40,6 +40,20 @@
             background-color: #0056b3;
         }
     </style>
+    <script>
+        function checkAvailabilityAndBook() {
+            fetch('/check-and-book', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -63,3 +77,4 @@
     </div>
 </body>
 </html>
+
