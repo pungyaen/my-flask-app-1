@@ -15,6 +15,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
+thread_started = False
 
 class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -31,8 +32,11 @@ class RoomAvailability(db.Model):
 
 @app.route('/')
 def hotel_information():
-    update_thread = threading.Thread(target=update_room_availability)
-    update_thread.start()
+    global thread_started
+    if not thread_started:
+        update_thread = threading.Thread(target=update_room_availability)
+        update_thread.start()
+        thread_started = True
     return render_template('hotel_information.html')
 
 @app.route('/status_room')
@@ -338,7 +342,7 @@ def update_room_availability():
             line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
             send_line_image('reservation_details.jpg', line_token)
 
-        time.sleep(86400)
+        time.sleep(60)
 
 if __name__ == '__main__':
     with app.app_context():
