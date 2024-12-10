@@ -342,7 +342,7 @@ def update_room_availability():
             line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
             send_line_image('reservation_details.jpg', line_token)
 
-        time.sleep(60)
+        time.sleep(86400)
 
 if __name__ == '__main__':
     with app.app_context():
