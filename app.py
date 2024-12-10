@@ -313,28 +313,22 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
 
 def update_room_availability():
     while True:
-        try:
-            with app.app_context():
-                print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
-                start_date = datetime.now().date()
-                current_date = start_date
-                # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
-                RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
-                # ลบการจองที่หมดอายุ
-                Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
-                # เรียงลำดับการจองตามวันที่ checkin
-                reservations = Reservation.query.order_by(Reservation.checkin).all()
-                for reservation in reservations:
-                    print(
-                        f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
+        with app.app_context():
+            print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
+            start_date = datetime.now().date()
+            current_date = start_date
+            # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
+            RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
+            # ลบการจองที่หมดอายุ
+            Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
+            # เรียงลำดับการจองตามวันที่ checkin
+            reservations = Reservation.query.order_by(Reservation.checkin).all()
+            for reservation in reservations:
+                print(
+                    f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
-                db.session.commit()
-                print("room_availability&reservations updated!")
-
-        except sqlite3.OperationalError as e:
-            print(f"SQLite error: {e}. Retrying in 1 second...")
-            time.sleep(1)
-            continue
+            db.session.commit()
+            print("room_availability&reservations updated!")
 
         time.sleep(60)
 
