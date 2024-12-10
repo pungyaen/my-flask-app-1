@@ -341,14 +341,15 @@ def update_room_availability():
         time.sleep(1)
 
 def start_scheduler():
-    scheduler = BackgroundScheduler()
-    trigger = CronTrigger(hour=2, minute=32)  # กำหนดให้ทำงานทุกวันเวลา 05:00 น.
-    scheduler.add_job(update_room_availability, trigger=trigger, replace_existing=True)
-    scheduler.start()
-    print("Scheduler started, job will run every day at 05:00")
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        scheduler = BackgroundScheduler()
+        trigger = CronTrigger(hour=2, minute=40)  # กำหนดให้ทำงานทุกวันเวลา 02:32 น.
+        scheduler.add_job(update_room_availability, trigger=trigger, replace_existing=True)
+        scheduler.start()
+        print("Scheduler started, job will run every day at 02:32")
 
-    # Shut down the scheduler when exiting the app
-    atexit.register(lambda: scheduler.shutdown())
+        # Shut down the scheduler when exiting the app
+        atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == '__main__':
     with app.app_context():
