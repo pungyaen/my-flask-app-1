@@ -9,6 +9,7 @@ import requests
 import base64
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+import atexit
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -341,10 +342,13 @@ def update_room_availability():
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
-    trigger = CronTrigger(hour=2, minute=10)  # กำหนดให้ทำงานทุกวันเวลา 05:00 น.
+    trigger = CronTrigger(hour=2, minute=32)  # กำหนดให้ทำงานทุกวันเวลา 05:00 น.
     scheduler.add_job(update_room_availability, trigger=trigger, replace_existing=True)
     scheduler.start()
     print("Scheduler started, job will run every day at 05:00")
+
+    # Shut down the scheduler when exiting the app
+    atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == '__main__':
     with app.app_context():
