@@ -320,33 +320,30 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
         print(response.json())
 
 def update_room_availability():
-    while True:
-        with app.app_context():
-            print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
-            start_date = datetime.now().date()
-            current_date = start_date
-            # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
-            RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
-            # ลบการจองที่หมดอายุ
-            Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
-            # เรียงลำดับการจองตามวันที่ checkin
-            reservations = Reservation.query.order_by(Reservation.checkin).all()
-            for reservation in reservations:
-                print(
-                    f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
+    with app.app_context():
+        print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
+        start_date = datetime.now().date()
+        current_date = start_date
+        # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
+        RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
+        # ลบการจองที่หมดอายุ
+        Reservation.query.filter(Reservation.checkout < str(current_date)).delete()
+        # เรียงลำดับการจองตามวันที่ checkin
+        reservations = Reservation.query.order_by(Reservation.checkin).all()
+        for reservation in reservations:
+            print(
+                f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
-            db.session.commit()
-            print("room_availability&reservations updated!")
+        db.session.commit()
+        print("room_availability&reservations updated!")
 
-            # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
-            reservations = Reservation.query.order_by(Reservation.checkin).all()
-            room_availabilities = get_room_availability()
-            img = create_reservation_image(reservations, room_availabilities, reservation.id)
-            save_image(img)
-            line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
-            send_line_image('reservation_details.jpg', line_token)
-
-        time.sleep(86400)
+        # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
+        reservations = Reservation.query.order_by(Reservation.checkin).all()
+        room_availabilities = get_room_availability()
+        img = create_reservation_image(reservations, room_availabilities, reservation.id)
+        save_image(img)
+        line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+        send_line_image('reservation_details.jpg', line_token)
 
 if __name__ == '__main__':
     with app.app_context():
