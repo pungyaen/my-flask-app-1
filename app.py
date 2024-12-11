@@ -170,8 +170,8 @@ def create_reservation_image_with_details(reservation_details, slip_path):
 
     try:
         # ฟอนต์
-        font = ImageFont.truetype("cmss10.ttf.ttf", 30)
-        bold_font = ImageFont.truetype("cmss10.ttf.ttf", 30)
+        font = ImageFont.truetype("cmss10.ttf", 30)
+        bold_font = ImageFont.truetype("cmss10.ttf", 30)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
