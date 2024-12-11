@@ -7,7 +7,8 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
-import threading
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -34,8 +35,10 @@ i = 0
 def hotel_information():
     global i
     if i < 1:
-        update_thread = threading.Thread(target=update_room_availability)
-        update_thread.start()
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(update_room_availability, 'interval', minutes=3)
+        scheduler.start()
+        atexit.register(lambda: scheduler.shutdown())
         i = i + 1
         print(i)
     return render_template('hotel_information.html')
