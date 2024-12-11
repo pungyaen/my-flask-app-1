@@ -204,8 +204,8 @@ def create_reservation_image(reservations, room_availabilities, latest_reservati
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("cmss10.ttf", 20)
-        bold_font = ImageFont.truetype("cmss10.ttf", 20)
+        font = ImageFont.truetype("cmss10.ttf", 17)
+        bold_font = ImageFont.truetype("cmss10.ttf", 17)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
