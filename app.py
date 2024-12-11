@@ -3,12 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 import sqlite3
 import os
 from datetime import datetime, timedelta
-import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+import slip
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -36,7 +36,7 @@ def hotel_information():
     global i
     if i < 1:
         scheduler = BackgroundScheduler()
-        scheduler.add_job(update_room_availability, 'interval', minutes=3)
+        scheduler.add_job(update_room_availability, 'interval', minutes=1440)
         scheduler.start()
         atexit.register(lambda: scheduler.shutdown())
         i = i + 1
@@ -345,8 +345,11 @@ def update_room_availability():
         line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
         send_line_image('reservation_details.jpg', line_token)
 
+app.register_blueprint(slip.slip_blueprint)
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-
+    if not os.path.exists('uploads'):
+        os.makedirs('uploads')
     app.run(debug=True)
