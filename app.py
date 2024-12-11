@@ -170,8 +170,8 @@ def create_reservation_image_with_details(reservation_details, slip_path):
 
     try:
         # ฟอนต์
-        font = ImageFont.truetype("arial.ttf", 40)
-        bold_font = ImageFont.truetype("arialbd.ttf", 40)
+        font = ImageFont.truetype("arial.ttf", 120)
+        bold_font = ImageFont.truetype("arialbd.ttf", 120)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
@@ -204,8 +204,8 @@ def create_reservation_image(reservations, room_availabilities, latest_reservati
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("arial.ttf", 20)
-        bold_font = ImageFont.truetype("arialbd.ttf", 20)
+        font = ImageFont.truetype("arial.ttf", 40)
+        bold_font = ImageFont.truetype("arialbd.ttf", 40)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
