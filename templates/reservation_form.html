@@ -6,25 +6,17 @@
     <title>Reservation Form</title>
 </head>
 <body>
-    <h1>โปรดกรอกข้อมูลการจอง</h1>
+    <h1>Reservation Form</h1>
     <form id="reservationForm" action="/submit-reservation" method="post" enctype="multipart/form-data">
-        <label for="name">ชื่อผู้จอง:</label>
+        <label for="name">Name:</label>
         <input type="text" id="name" name="name" required><br><br>
-        <label for="phone">หมายเลขโทรศัพท์:</label>
+        <label for="phone">Phone:</label>
         <input type="text" id="phone" name="phone" required><br><br>
-        <label for="checkin">วันที่ Check-in:</label>
+        <label for="checkin">Check-in Date:</label>
         <input type="date" id="checkin" name="checkin" required><br><br>
-        <label for="checkout">วันที่ Check-out:</label>
+        <label for="checkout">Check-out Date:</label>
         <input type="date" id="checkout" name="checkout" required><br><br>
-        <h2 style="font-size: 16px;">
-            <p>หมายเลขบัญชีรับโอนเงิน :</p>
-            <p>ธนาคาร -> ทหารไทยธนชาติ (TTB)</p>
-            <p>ชื่อบัญชี -> อนุชิต เจริญพันธ์</p>
-            <p>เลขที่บัญชี -> 9227645034</p>
-            <p>*โปรดตรวจสอบชื่อบัญชีและหมายเลขให้ตรงกันก่อนทำการโอนเงิน*</p>
-        </h2>
-
-        <label for="slip">แนบสลิปโอนเงินเต็มจำนวน (Payment Slip):</label>
+        <label for="slip">Payment Slip:</label>
         <input type="file" id="slip" name="slip" required><br><br>
         <input type="submit" value="Submit">
     </form>
@@ -55,4 +47,5 @@
     </script>
 </body>
 </html>
+
 
