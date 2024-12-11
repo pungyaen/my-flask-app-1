@@ -181,13 +181,13 @@ def create_reservation_image_with_details(reservation_details, slip_path):
 
     # ข้อมูลสำหรับแสดงในรูปภาพ
     draw.text((margin_left, y_offset), f"Name: {reservation_details['name']}", font=bold_font, fill='black')
-    y_offset += 30
+    y_offset += 50
     draw.text((margin_left, y_offset), f"Phone: {reservation_details['phone']}", font=font, fill='black')
-    y_offset += 30
+    y_offset += 50
     draw.text((margin_left, y_offset), f"Check-in: {reservation_details['checkin']}", font=font, fill='black')
-    y_offset += 30
+    y_offset += 50
     draw.text((margin_left, y_offset), f"Check-out: {reservation_details['checkout']}", font=font, fill='black')
-    y_offset += 30
+    y_offset += 50
 
     # แสดงสลิป
     slip_image = Image.open(slip_path)
@@ -204,8 +204,8 @@ def create_reservation_image(reservations, room_availabilities, latest_reservati
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("ANGSA.ttf", 28)
-        bold_font = ImageFont.truetype("ANGSA.ttf", 28)
+        font = ImageFont.truetype("ANGSA.ttf", 25)
+        bold_font = ImageFont.truetype("ANGSA.ttf", 25)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
