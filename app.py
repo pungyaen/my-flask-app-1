@@ -15,7 +15,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
-thread_started = False
 
 class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -30,13 +29,15 @@ class RoomAvailability(db.Model):
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
 
+i = 0
 @app.route('/')
 def hotel_information():
-    global thread_started
-    if not thread_started:
+    global i
+    if i < 1:
         update_thread = threading.Thread(target=update_room_availability)
         update_thread.start()
-        thread_started = True
+        i = i + 1
+        print(i)
     return render_template('hotel_information.html')
 
 @app.route('/status_room')
@@ -170,8 +171,8 @@ def create_reservation_image_with_details(reservation_details, slip_path):
 
     try:
         # ฟอนต์
-        font = ImageFont.truetype("ANGSA.ttf", 56)
-        bold_font = ImageFont.truetype("ANGSA.ttf", 56)
+        font = ImageFont.truetype("ANGSA.ttf", 54)
+        bold_font = ImageFont.truetype("ANGSA.ttf", 54)
     except IOError:
         font = ImageFont.load_default()
         bold_font = ImageFont.load_default()
