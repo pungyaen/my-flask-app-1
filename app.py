@@ -56,6 +56,15 @@ def update_room_availability_endpoint():
 @app.route('/delete-reservation/<int:reservation_id>', methods=['DELETE'])
 def delete_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
+    checkin_date = datetime.strptime(reservation.checkin, '%Y-%m-%d').date()
+    checkout_date = datetime.strptime(reservation.checkout, '%Y-%m-%d').date()
+    date_to_update = checkin_date
+    while date_to_update < checkout_date:
+        room_availability = RoomAvailability.query.filter_by(date=str(date_to_update)).first()
+        if room_availability:
+            room_availability.available_rooms += 1
+        date_to_update += timedelta(days=1)
+
     db.session.delete(reservation)
     db.session.flush()
     db.session.commit()
