@@ -371,6 +371,7 @@ def update_room_availability():
 
         db.session.commit()
         print("room_availability&reservations updated!")
+        upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
         # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
         reservations = Reservation.query.order_by(Reservation.checkin).all()
