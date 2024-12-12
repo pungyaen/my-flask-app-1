@@ -68,7 +68,7 @@ def delete_reservation(reservation_id):
     db.session.delete(reservation)
     db.session.flush()
     db.session.commit()
-    time.sleep(1)
+    time.sleep(3)
     update_room_availability()
     return jsonify({'message': 'Reservation deleted successfully.'})
 
@@ -385,7 +385,7 @@ def update_room_availability():
         db.session.flush()
         db.session.commit()
         print("room_availability&reservations updated!")
-        time.sleep(1)
+        time.sleep(3)
         upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
         # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
