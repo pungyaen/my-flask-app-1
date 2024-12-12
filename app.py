@@ -57,9 +57,10 @@ def update_room_availability_endpoint():
 def delete_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
     db.session.delete(reservation)
+    db.session.flush()
     db.session.commit()
+    time.sleep(1)
     update_room_availability()
-    upload_file_to_github('reservations.db', 'pungyaen/my-flask-app-1', 'instance/reservations.db', 'Delete reservation', 'main', os.getenv('GITHUB_TOKEN'))
     return jsonify({'message': 'Reservation deleted successfully.'})
 
 i = 0
