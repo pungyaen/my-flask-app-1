@@ -36,7 +36,7 @@ def hotel_information():
     global i
     if i < 1:
         scheduler = BackgroundScheduler()
-        scheduler.add_job(update_room_availability, 'interval', minutes=1440)
+        scheduler.add_job(update_room_availability, 'interval', minutes=3)
         scheduler.start()
         atexit.register(lambda: scheduler.shutdown())
         i = i + 1
