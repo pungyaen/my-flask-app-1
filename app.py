@@ -30,6 +30,36 @@ class RoomAvailability(db.Model):
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
 
+@app.route('/admin')
+def admin_panel():
+    return render_template('admin.html')
+
+@app.route('/get-reservations')
+def get_reservations():
+    reservations = Reservation.query.all()
+    reservations_list = [{
+        'id': r.id,
+        'name': r.name,
+        'phone': r.phone,
+        'checkin': r.checkin,
+        'checkout': r.checkout
+    } for r in reservations]
+    return jsonify({'reservations': reservations_list})
+
+@app.route('/update-room-availability', methods=['POST'])
+def update_room_availability_endpoint():
+    update_room_availability()
+    return jsonify({'message': 'Room availability updated successfully.'})
+
+@app.route('/delete-reservation/<int:reservation_id>', methods=['DELETE'])
+def delete_reservation(reservation_id):
+    reservation = Reservation.query.get_or_404(reservation_id)
+    db.session.delete(reservation)
+    db.session.commit()
+    update_room_availability()
+    upload_file_to_github('reservations.db', 'pungyaen/my-flask-app-1', 'instance/reservations.db', 'Delete reservation', 'main', os.getenv('GITHUB_TOKEN'))
+    return jsonify({'message': 'Reservation deleted successfully.'})
+
 i = 0
 @app.route('/')
 def hotel_information():

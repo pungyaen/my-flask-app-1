@@ -1,14 +1,14 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
 import sqlite3
 import os
 from datetime import datetime, timedelta
-import time
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import base64
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+import shutil
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -132,7 +132,12 @@ def submit_reservation():
 
     upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
-    return jsonify({'message': 'reservation form was sent (*booking completed when full transaction completed only*)'})
+    source = 'reservation_details_with_slip.jpg'
+    destination = 'static/reservation_details_with_slip.jpg'
+    shutil.copy2(source, destination)
+    reservation_image_url = url_for('static', filename='reservation_details_with_slip.jpg')
+    return render_template('reservation_success.html',
+                           reservation_image_url=reservation_image_url)
 
 @app.route('/get-room-status')
 def get_room_status():
