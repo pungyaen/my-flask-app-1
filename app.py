@@ -9,6 +9,7 @@ import base64
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
 import shutil
+import pytz
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -357,7 +358,8 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
 def update_room_availability():
     with app.app_context():
         print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
-        start_date = datetime.now().date()
+        bangkok_tz = pytz.timezone('Asia/Bangkok')
+        start_date = datetime.now(bangkok_tz).date()
         current_date = start_date
         # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
         RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
@@ -369,8 +371,10 @@ def update_room_availability():
             print(
                 f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
+        db.session.flush()
         db.session.commit()
         print("room_availability&reservations updated!")
+        time.sleep(1)
         upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
         # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
