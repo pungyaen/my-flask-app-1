@@ -9,6 +9,8 @@ import base64
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
 import shutil
+import pytz
+import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
@@ -29,6 +31,46 @@ class RoomAvailability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
+
+@app.route('/admin')
+def admin_panel():
+    return render_template('admin.html')
+
+@app.route('/get-reservations')
+def get_reservations():
+    reservations = Reservation.query.all()
+    reservations_list = [{
+        'id': r.id,
+        'name': r.name,
+        'phone': r.phone,
+        'checkin': r.checkin,
+        'checkout': r.checkout
+    } for r in reservations]
+    return jsonify({'reservations': reservations_list})
+
+@app.route('/update-room-availability', methods=['POST'])
+def update_room_availability_endpoint():
+    update_room_availability()
+    return jsonify({'message': 'Room availability updated successfully.'})
+
+@app.route('/delete-reservation/<int:reservation_id>', methods=['DELETE'])
+def delete_reservation(reservation_id):
+    reservation = Reservation.query.get_or_404(reservation_id)
+    checkin_date = datetime.strptime(reservation.checkin, '%Y-%m-%d').date()
+    checkout_date = datetime.strptime(reservation.checkout, '%Y-%m-%d').date()
+    date_to_update = checkin_date
+    while date_to_update < checkout_date:
+        room_availability = RoomAvailability.query.filter_by(date=str(date_to_update)).first()
+        if room_availability:
+            room_availability.available_rooms += 1
+        date_to_update += timedelta(days=1)
+
+    db.session.delete(reservation)
+    db.session.flush()
+    db.session.commit()
+    time.sleep(6)
+    update_room_availability()
+    return jsonify({'message': 'Reservation deleted successfully.'})
 
 i = 0
 @app.route('/')
@@ -327,7 +369,8 @@ def upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch,
 def update_room_availability():
     with app.app_context():
         print("Started updating room_availability&reservations")  # เพิ่มการตรวจสอบการทำงานของฟังก์ชัน
-        start_date = datetime.now().date()
+        bangkok_tz = pytz.timezone('Asia/Bangkok')
+        start_date = datetime.now(bangkok_tz).date()
         current_date = start_date
         # ลบข้อมูลห้องที่เก่ากว่าวันปัจจุบัน
         RoomAvailability.query.filter(RoomAvailability.date < str(start_date)).delete()
@@ -339,8 +382,11 @@ def update_room_availability():
             print(
                 f"Reservation ID: {reservation.id}, Name: {reservation.name}, Check-in: {reservation.checkin}, Check-out: {reservation.checkout}")
 
+        db.session.flush()
         db.session.commit()
         print("room_availability&reservations updated!")
+        time.sleep(4)
+        upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
         # ส่ง update ทางไลน์ทุกเช้า 05.00 น.
         reservations = Reservation.query.order_by(Reservation.checkin).all()
