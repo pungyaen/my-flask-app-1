@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, url_for
+from flask import Flask, request, render_template, redirect, url_for, jsonify, flash, session
 from flask_sqlalchemy import SQLAlchemy
 import sqlite3
 import os
@@ -13,6 +13,7 @@ import pytz
 import time
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservations.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -32,8 +33,28 @@ class RoomAvailability(db.Model):
     date = db.Column(db.String(10), nullable=False, unique=True)
     available_rooms = db.Column(db.Integer, nullable=False)
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        if request.form['username'] != 'pung' or request.form['password'] != '322332':
+            error = 'Invalid credentials. Please try again.'
+        else:
+            session['logged_in'] = True
+            return redirect(url_for('admin_panel'))
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    flash('You were logged out.')
+    return redirect(url_for('login'))
+
 @app.route('/admin')
 def admin_panel():
+    if 'logged_in' not in session:  # ตรวจสอบว่าไม่มี session ของผู้ใช้
+        flash('You need to login first.')
+        return redirect(url_for('login'))  # ถ้าไม่มี session ให้ไปที่หน้า login
     return render_template('admin.html')
 
 @app.route('/get-reservations')
