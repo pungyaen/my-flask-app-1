@@ -21,7 +21,7 @@ def initialize_room_availability():
     current_date = start_date
     while current_date <= end_date:
         date_str = current_date.strftime('%Y-%m-%d')  # แปลงวันที่เป็น string ในรูปแบบ YYYY-MM-DD
-        available_rooms = 2  # จำนวนห้องว่างเริ่มต้น
+        available_rooms = 3  # จำนวนห้องว่างเริ่มต้น
 
         # เพิ่มข้อมูลลงในฐานข้อมูล
         room_availability = RoomAvailability(date=date_str, available_rooms=available_rooms)
