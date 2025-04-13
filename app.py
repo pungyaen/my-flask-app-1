@@ -138,8 +138,8 @@ def submit_reservation():
     image_path = create_reservation_image_with_details(reservation_details, slip_filename)
 
     # ส่งภาพผ่าน LINE
-    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
-    send_line_image_2(image_path, line_token)
+    # line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    # send_line_image_2(image_path, line_token)
 
     # ตรวจสอบความพร้อมของห้อง
     checkin_date = datetime.strptime(checkin, '%Y-%m-%d')
@@ -190,8 +190,8 @@ def submit_reservation():
     save_image(img)
 
     # ส่งภาพผ่าน LINE
-    line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
-    send_line_image('reservation_details.jpg', line_token)
+    # line_token = 'ca7yuOC9DjF8FNfHZMaPRMtGORlydUUX83VqTwVoMiR'  # เปลี่ยนด้วย token ของคุณ
+    # send_line_image('reservation_details.jpg', line_token)
 
     upload_file_to_github(file_path, repo, path_in_repo, commit_message, branch, token)
 
